@@ -1,0 +1,63 @@
+{
+  "common": {
+    "clear": "Clear",
+    "close": "Close",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "loading": "Loading",
+    "setting": "Setting",
+    "copy": "Copy",
+    "delete": "Delete",
+    "execute": "Execute"
+  },
+  "conversation": {
+    "new-chat": "New Chat",
+    "conversation-title": "Conversation title",
+    "edit-title": "Edit conversation title"
+  },
+  "connection": {
+    "self": "Connection",
+    "new": "Create Connection",
+    "select-database": "Select your database"
+  },
+  "execution": {
+    "title": "Execute SQL",
+    "message": {
+      "executing": "Executing query...",
+      "no-connection": "No connection selected",
+      "no-data": "No data returned"
+    }
+  },
+  "editor": {
+    "placeholder": "Enter your question here..."
+  },
+  "setting": {
+    "self": "Setting",
+    "basic": {
+      "self": "Basic",
+      "language": "Language"
+    },
+    "theme": {
+      "self": "Theme",
+      "system": "Follow system",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "openai-api-configuration": {
+      "self": "OpenAI API configuration"
+    },
+    "data": {
+      "self": "Data",
+      "clear-all-data": "Clear all data"
+    }
+  },
+  "social": {
+    "join-discord-channel": "Join Discord Channel",
+    "join-wechat-group": "Join WeChat Group"
+  },
+  "banner": {
+    "data-storage": "Connection settings are stored in your local browser",
+    "non-select-sql-warning": "The current statement may be non-SELECT SQL, which will result in a database schema or data change. Make sure you know what you are doing."
+  }
+}
