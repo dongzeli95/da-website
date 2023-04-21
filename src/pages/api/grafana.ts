@@ -1,11 +1,5 @@
 import { NextRequest } from "next/server";
 
-// const externalServiceUrl = "https://da-service-6039-4-1313827042.sh.run.tcloudbase.com/v1/analyze";
-const externalServiceUrl = "https://da-service-dev-6039-4-1313827042.sh.run.tcloudbase.com/v1/analyze";
-
-const grafanaUrl = "https://grafana-dev-6039-4-1313827042.sh.run.tcloudbase.com"
-const grafanaKey = "eyJrIjoiY09RYW1xNHEyN2FFWmdMZjc2N3RBek9UOE5LZWlTWHQiLCJuIjoiYWRtaW4iLCJpZCI6MX0="
-
 export const config = {
     runtime: "edge",
   };
@@ -19,6 +13,8 @@ const handler = async (req: NextRequest) => {
 };
 
 async function create_dashboard(dashboard_name:string) {
+    const grafanaUrl = process.env.GRAFANA_URL;
+    const grafanaKey = process.env.GRAFANA_KEY;
     const url = grafanaUrl + '/api/dashboards/db';
     const headers = {
       'Content-Type': 'application/json',
