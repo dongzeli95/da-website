@@ -18,6 +18,8 @@ import MessageView from "./MessageView";
 import MessageTextarea from "./MessageTextarea";
 import DataStorageBanner from "../DataStorageBanner";
 import GrafanaGraph from "./GrafanaGraph";
+import { useRouter } from 'next/router';
+
 
 // The maximum number of tokens that can be sent to the OpenAI API.
 // reference: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
@@ -35,6 +37,17 @@ const ConversationView = () => {
   const currentConversation = conversationStore.currentConversation;
   const messageList = messageStore.messageList.filter((message) => message.conversationId === currentConversation?.id);
   const lastMessage = last(messageList);
+
+  const router = useRouter();
+
+  const openFullGrafanaDashboard = () => {
+    const dashboard_id = currentConversation?.dashboardId;
+    const url = `/fullscreen-grafana-view?dashboard_id=${dashboard_id}`;
+    const newTab = window.open(url, '_blank');
+    if (newTab !== null) {
+      newTab.focus();
+    }
+  };
 
   useEffect(() => {
     messageStore.messageList.map((message) => {
@@ -208,7 +221,8 @@ const ConversationView = () => {
     //   status: "DONE",
     // });
 
-const datasource_id = "LYCqjdE4z";
+const datasource_id = "ztMH-aE4k";
+const dashboard_id = currentConversation?.dashboardId
 const prompt2 = messageList[messageList.length - 1];
 console.log("prompt2: " + prompt2.content)
 
@@ -217,7 +231,7 @@ const response = await fetch("/api/da", {
   headers: {
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ datasource_id, "prompt":prompt2.content }),
+  body: JSON.stringify({ datasource_id, dashboard_id, "prompt":prompt2.content }),
 });
 
 const data = await response.json();
@@ -238,6 +252,12 @@ console.log("data: " + data.url);
       <div className="sticky top-0 z-1 bg-white dark:bg-zinc-800 w-full flex flex-col justify-start items-start">
         <DataStorageBanner />
         <Header className={showHeaderShadow ? "shadow" : ""} />
+        <button
+          className="w-full my-4 py-3 px-4 border dark:border-zinc-800 rounded-lg flex flex-row justify-center items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-zinc-800"
+          onClick={openFullGrafanaDashboard}
+        >
+          打开分析看板
+        </button>
       </div>
       <div className="p-2 w-full h-auto grow max-w-4xl py-1 px-4 sm:px-8 mx-auto">
         {messageList.length === 0 ? (
@@ -262,5 +282,12 @@ console.log("data: " + data.url);
     </div>
   );
 };
+
+
+// const router = useRouter();
+
+// const openFullGrafanaDashboard = () => {
+//   router.push('/fullscreen-graph');
+// };
 
 export default ConversationView;

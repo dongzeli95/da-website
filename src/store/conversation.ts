@@ -10,6 +10,7 @@ const getDefaultConversation = (): Conversation => {
     assistantId: "sql-assistant",
     title: dayjs().format("LTS"),
     createdAt: Date.now(),
+    dashboardId: "",
   };
 };
 
@@ -17,7 +18,7 @@ interface ConversationState {
   getState: () => ConversationState;
   conversationList: Conversation[];
   currentConversation?: Conversation;
-  createConversation: (connectionId?: Id, databaseName?: string) => Conversation;
+  createConversation: (dashboardId:string, connectionId?: Id, databaseName?: string) => Conversation;
   setCurrentConversation: (Conversation: Conversation | undefined) => void;
   getConversationById: (conversationId: Id) => Conversation | undefined;
   updateConversation: (conversationId: Id, conversation: Partial<Conversation>) => void;
@@ -29,11 +30,12 @@ export const useConversationStore = create<ConversationState>()(
     (set, get) => ({
       getState: () => get(),
       conversationList: [],
-      createConversation: (connectionId?: Id, databaseName?: string) => {
+      createConversation: ( dashboardId: string, connectionId?: Id, databaseName?: string) => {
         const conversation: Conversation = {
           ...getDefaultConversation(),
           connectionId,
           databaseName,
+          dashboardId,
         };
         set((state) => ({
           conversationList: [...state.conversationList, conversation],

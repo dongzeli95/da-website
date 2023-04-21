@@ -23,11 +23,21 @@ const EmptyView = (props: Props) => {
   const handleExampleClick = async (content: string) => {
     let conversation = conversationStore.currentConversation;
     if (!conversation) {
+      const response = await fetch("/api/grafana", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ "api_name": "create_dashboard", "dashboard_name": generateUUID()}),
+      });
+  
+      const data = await response.json();
+      console.log(JSON.stringify(data, null, 2));
       const currentConnectionCtx = connectionStore.currentConnectionCtx;
       if (!currentConnectionCtx) {
-        conversation = conversationStore.createConversation();
+        conversation = conversationStore.createConversation(data.uid);
       } else {
-        conversation = conversationStore.createConversation(currentConnectionCtx.connection.id, currentConnectionCtx.database?.name);
+        conversation = conversationStore.createConversation(data.uid,currentConnectionCtx.connection.id, currentConnectionCtx.database?.name);
       }
     }
 

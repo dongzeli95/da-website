@@ -1,3 +1,2 @@
 #!/bin/bas
-zip -r main.zip . -x "node_modules/*" ".next/*"
-
+git archive --format=zip -o main.zip HEAD
