@@ -7,4 +7,5 @@ export interface Conversation {
   assistantId: Id;
   title: string;
   createdAt: Timestamp;
+  dashboardId: string;
 }

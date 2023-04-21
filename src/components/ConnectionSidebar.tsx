@@ -14,6 +14,7 @@ import DarkModeSwitch from "./DarkModeSwitch";
 import CreateConnectionModal from "./CreateConnectionModal";
 import SettingModal from "./SettingModal";
 import EditConversationTitleModal from "./EditConversationTitleModal";
+import { countTextTokens, generateUUID } from "@/utils";
 
 interface State {
   showCreateConnectionModal: boolean;
@@ -124,11 +125,22 @@ const ConnectionSidebar = () => {
     });
   };
 
-  const handleCreateConversation = () => {
+  const handleCreateConversation = async () => {
+    const response = await fetch("/api/grafana", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ "api_name": "create_dashboard", "dashboard_name": generateUUID()}),
+    });
+
+    const data = await response.json();
+    console.log(JSON.stringify(data, null, 2));
+
     if (!currentConnectionCtx) {
-      conversationStore.createConversation();
+      conversationStore.createConversation(data.uid);
     } else {
-      conversationStore.createConversation(currentConnectionCtx.connection.id, currentConnectionCtx.database?.name);
+      conversationStore.createConversation(data.uid, currentConnectionCtx.connection.id, currentConnectionCtx.database?.name);
     }
   };
 
