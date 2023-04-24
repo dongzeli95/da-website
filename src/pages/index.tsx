@@ -1,8 +1,10 @@
-import { NextPage } from "next";
+import { NextPage, GetServerSideProps } from "next";
 import Head from "next/head";
 import dynamic from "next/dynamic";
 import Script from "next/script";
 import React from "react";
+import { getCookie } from 'cookies-next';
+import { useEffect, useState } from 'react'
 
 // Use dynamic import to avoid page hydrated.
 // reference: https://github.com/pmndrs/zustand/issues/1145#issuecomment-1316431268
@@ -16,7 +18,49 @@ const QueryDrawer = dynamic(() => import("@/components/QueryDrawer"), {
   ssr: false,
 });
 
+const LoginView = dynamic(() => import("@/components/LoginView"), {
+  ssr: false,
+});
+
+
+
 const IndexPage: NextPage = () => {
+  const [isValidAuth, setIsValidAuth] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+
+    // Check if the token exists and is valid
+    // You should also verify the token on the server-side to prevent attacks
+    if (!token) {
+      return
+    }
+
+    const verify_token = async () => {
+      try {
+        const response = await fetch('/api/da-be', {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ "api_name": "verify_token", "token": localStorage.getItem('token')}),
+        });
+
+        setIsValidAuth(response.ok)
+      } catch (error) {}
+    }
+
+    verify_token()
+  }, [])
+
+  const handleLogin = () => {
+    setIsValidAuth(true);
+  };
+
+  const handleLogout = () => {
+    setIsValidAuth(false);
+  };
+
   return (
     <div>
       <Head>
@@ -33,11 +77,14 @@ const IndexPage: NextPage = () => {
 
       <h1 className="sr-only">DA Chat</h1>
 
-      <main className="w-full h-full flex flex-row dark:bg-zinc-800">
-        <ConnectionSidebar />
-        <ConversationView />
-        <QueryDrawer />
-      </main>
+      {isValidAuth ? (
+        <main className="w-full h-full flex flex-row dark:bg-zinc-800">
+                <ConnectionSidebar onLogout={handleLogout}/>
+                <ConversationView />
+                </main>
+      ) : (
+        <LoginView onLogin={handleLogin} />
+      )}
 
       <Script defer data-domain="sqlchat.ai" src="https://plausible.io/js/script.js" />
     </div>
