@@ -1,31 +1,20 @@
-import cloudbase from "@cloudbase/js-sdk";
+export async function sendEmail(email: string) : Promise<string>{
+  const response = await fetch("/api/da-be", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ "api_name": "send_email", "email": email}),
+  });
 
-const app = cloudbase.init({
-    env: "tutorial-1ccc6e",
-    appSign: "AOJ8yAABTxnUe7iQA58"
-});
+  if (!response.ok) {
+    return ""
+  }
+  
+  const res = await response.json();
+  if (res === undefined) {
+    return ""
+  }
 
-const auth = app.auth({persistence: 'local'})
-
-export function generateSmsCode() {
-    let res = "";
-    for (let i = 0; i < 4; i++) {
-        res += Math.floor(Math.random() * 10).toString();
-    }
-    return res;
-}
-
-export async function sendEmail(email: string, code: string) {
-    await auth.anonymousAuthProvider().signIn()
-    const res = await app.callFunction({
-      name: "email",
-      data: {
-        'actionType': 'SEND_EMAIL',
-        'email': email,
-        'languageCode': 'zh',
-        'verificationCode': code,
-      }
-    })
-
-    return res
+  return res.code ?? "";
 }

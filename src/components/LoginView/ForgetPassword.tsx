@@ -1,6 +1,6 @@
 import { useState } from "react";
 import validator from "email-validator";
-import { generateSmsCode, sendEmail } from './utils';
+import { sendEmail } from './utils';
 
 enum Step {
     Email,
@@ -33,10 +33,12 @@ const  ForgetPassword: React.FC<{
             return;
         }
         
-        const code = generateSmsCode();
+        const code = await sendEmail(email);
+        if (code === undefined || code === "") {
+            setError("发送验证码失败，请重试");
+            return;
+        }
         setVerificationCode(code);
-        // Send verification code to email.
-        await sendEmail(email, code);
 
         setStep(Step.VerificationCode);
     }

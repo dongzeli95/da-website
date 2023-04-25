@@ -24,6 +24,13 @@ const handler = async (req: NextRequest) => {
       return new Response(JSON.stringify({ message: "Token verified" }), { status: 200 })
     } else if (api_name === "change_password") {
         return changePassword(email, password)
+    } else if (api_name === "send_email") {
+      const code = await sendEmail(email)
+      if (code === undefined || code.length === 0) {
+        return new Response(JSON.stringify({ error: "No code" }), { status: 401 })
+      }
+
+      return new Response(JSON.stringify({ code }), { status: 200 })
     }
   };
 
@@ -75,6 +82,19 @@ async function verifyToken(token: string) {
   return response.ok
 }
 
+async function sendEmail(email: string) : Promise<string>{
+  const params = new URLSearchParams();
+  params.append('email', email);
+  const response = await fetch(`${baseUrl}/v1/email?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  });
+
+  const res = await response.json()
+  return res
+}
 
 
 export default handler;

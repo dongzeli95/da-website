@@ -1,6 +1,6 @@
 import { useState } from "react";
 import validator from "email-validator";
-import { generateSmsCode, sendEmail } from './utils';
+import { sendEmail } from './utils';
 import ForgetPassword from "./ForgetPassword";
 
 const LoginView: React.FC<{
@@ -81,10 +81,13 @@ const LoginView: React.FC<{
         return;
     }
     
-    const code = generateSmsCode();
+    const code = await sendEmail(email);
+    if (code === undefined || code === "") {
+        setError("发送验证码失败，请重试");
+        return;
+    }
+
     setVerificationCode(code);
-    // Send verification code to email.
-    await sendEmail(email, code);
     setShowVerificationStep(true);
   }
 
