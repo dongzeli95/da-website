@@ -224,7 +224,6 @@ const ConversationView = () => {
 const datasource_id = "ztMH-aE4k";
 const dashboard_id = currentConversation?.dashboardId
 const prompt2 = messageList[messageList.length - 1];
-console.log("prompt2: " + prompt2.content)
 
 const response = await fetch("/api/da", {
   method: "POST",
@@ -282,12 +281,5 @@ console.log("data: " + data.url);
     </div>
   );
 };
-
-
-// const router = useRouter();
-
-// const openFullGrafanaDashboard = () => {
-//   router.push('/fullscreen-graph');
-// };
 
 export default ConversationView;

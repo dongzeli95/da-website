@@ -28,8 +28,6 @@ const handler = async (req: NextRequest) => {
     body: JSON.stringify(requestBody),
   });
 
-  console.log("externalRes", externalRes)
-
   // Check if the request was successful
   if (!externalRes.ok) {
     return new Response(externalRes.body, {

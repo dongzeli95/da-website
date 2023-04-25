@@ -11,6 +11,7 @@ import Icon from "./Icon";
 import EngineIcon from "./EngineIcon";
 import LocaleSwitch from "./LocaleSwitch";
 import DarkModeSwitch from "./DarkModeSwitch";
+import Logout from "./Logout";
 import CreateConnectionModal from "./CreateConnectionModal";
 import SettingModal from "./SettingModal";
 import EditConversationTitleModal from "./EditConversationTitleModal";
@@ -22,7 +23,7 @@ interface State {
   showEditConversationTitleModal: boolean;
 }
 
-const ConnectionSidebar = () => {
+const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const { t } = useTranslation();
   const layoutStore = useLayoutStore();
   const connectionStore = useConnectionStore();
@@ -218,6 +219,7 @@ const ConnectionSidebar = () => {
             <div className="w-full flex flex-col justify-end items-center">
               <DarkModeSwitch />
               <LocaleSwitch />
+              <Logout onLogout={onLogout}/>
               {/* <Tooltip title={t("common.setting")} side="right">
                 <button
                   className=" w-10 h-10 p-1 rounded-full flex flex-row justify-center items-center hover:bg-gray-100 dark:hover:bg-zinc-700"
