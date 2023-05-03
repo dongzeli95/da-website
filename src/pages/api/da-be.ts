@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { getCookie, setCookie } from 'cookies-next';
-
+import { Connection, toGrafanaType } from "@/types";
 
 export const config = {
     runtime: "edge",
@@ -10,7 +9,8 @@ const baseUrl = process.env.DA_BE_URL;
 
 const handler = async (req: NextRequest) => {
     // Rest of your code
-    const { api_name, email, password, token } = await req.json();
+    const { api_name, email, password, token, connection } = await req.json();
+    console.log("called handler: ", api_name)
 
     if (api_name === "login") {
       return login(email, password)
@@ -31,6 +31,16 @@ const handler = async (req: NextRequest) => {
       }
 
       return new Response(JSON.stringify({ code }), { status: 200 })
+    } else if (api_name === "add_datasource") {
+      const conn = connection as Connection;
+      return addDatasource(token, conn)
+    } else if (api_name === "get_datasources") {
+      console.log("called get data sources: " , token)
+      return getDatasources(token)
+    } else if (api_name === "create_dashboard") {
+      return createGrafanaDashboard(token)
+    } else if (api_name === "get_user_organizations") {
+      return getUserOrganizations(token)
     }
   };
 
@@ -95,6 +105,64 @@ async function sendEmail(email: string) : Promise<string>{
   const res = await response.json()
   return res
 }
+
+
+async function getDatasources(token: string) {
+  const response = await fetch(`${baseUrl}/v1/grafana/datasource`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token,
+    },
+  });
+
+  return response
+}
+
+async function addDatasource(token: string, connection: Connection) {
+  const response = await fetch(`${baseUrl}/v1/grafana/datasource`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token,
+    },
+    body: JSON.stringify({
+      name: connection.title,
+      dsType: toGrafanaType(connection.engineType),
+      url: connection.host + ":" + connection.port,
+      dbName: connection.database,
+      user: connection.username,
+      password: connection.password,
+    }),
+  });
+
+  return response
+}
+
+async function createGrafanaDashboard(token: string) {
+  const response = await fetch(`${baseUrl}/v1/grafana/dashboard`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token,
+    },
+  });
+
+  return response
+}
+
+async function getUserOrganizations(token: string) {
+  const response = await fetch(`${baseUrl}/v1/grafana/user/organizations`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token,
+    },
+  });
+
+  return response
+}
+
 
 
 export default handler;

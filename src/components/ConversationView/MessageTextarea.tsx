@@ -36,12 +36,12 @@ const MessageTextarea = (props: Props) => {
   const handleSend = async () => {
     let conversation = conversationStore.currentConversation;
     if (!conversation) {
-      const response = await fetch("/api/grafana", {
+      const response = await fetch("/api/da-be", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ "api_name": "create_dashboard", "dashboard_name": generateUUID()}),
+        body: JSON.stringify({ "api_name": "create_dashboard", "token": localStorage.getItem('token')}),
       });
   
       const data = await response.json();

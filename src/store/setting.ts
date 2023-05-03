@@ -5,7 +5,7 @@ import { Setting } from "@/types";
 
 const getDefaultSetting = (): Setting => {
   return {
-    locale: "en",
+    locale: "zh",
     theme: "system",
     openAIApiConfig: {
       key: "",

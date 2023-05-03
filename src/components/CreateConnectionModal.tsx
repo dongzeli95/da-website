@@ -49,7 +49,8 @@ const CreateConnectionModal = (props: Props) => {
   const { connection: editConnection, close } = props;
   const connectionStore = useConnectionStore();
   const [connection, setConnection] = useState<Connection>(defaultConnection);
-  const [showDeleteConnectionModal, setShowDeleteConnectionModal] = useState(false);
+  const [showDeleteConnectionModal, setShowDeleteConnectionModal] =
+    useState(false);
   const [sslType, setSSLType] = useState<SSLType>("none");
   const [selectedSSLField, setSelectedSSLField] = useState<SSLFieldType>("ca");
   const [isRequesting, setIsRequesting] = useState(false);
@@ -103,7 +104,11 @@ const CreateConnectionModal = (props: Props) => {
     }
 
     const file = files[0];
-    if (file.type.startsWith("audio/") || file.type.startsWith("video/") || file.type.startsWith("image/")) {
+    if (
+      file.type.startsWith("audio/") ||
+      file.type.startsWith("video/") ||
+      file.type.startsWith("image/")
+    ) {
       toast.error(`Invalid file type:${file.type}`);
       return;
     }
@@ -139,9 +144,9 @@ const CreateConnectionModal = (props: Props) => {
 
     setIsRequesting(true);
     const tempConnection = cloneDeep(connection);
-    if (!showDatabaseField) {
-      tempConnection.database = undefined;
-    }
+    // if (!showDatabaseField) {
+    //   tempConnection.database = undefined;
+    // }
 
     try {
       const response = await fetch("/api/connection/test", {
@@ -166,19 +171,23 @@ const CreateConnectionModal = (props: Props) => {
     }
 
     try {
-      let connection: Connection;
+      let connection: Connection | undefined;
       if (isEditing) {
         connectionStore.updateConnection(tempConnection.id, tempConnection);
         connection = tempConnection;
       } else {
-        connection = connectionStore.createConnection(tempConnection);
+        connection = await connectionStore.createConnection(tempConnection);
+      }
+
+      if (!connection) {
+        return;
       }
 
       // Set the created connection as the current connection.
-      const databaseList = await connectionStore.getOrFetchDatabaseList(connection, true);
+      // const databaseList = await connectionStore.getOrFetchDatabaseList(connection, true);
       connectionStore.setCurrentConnectionCtx({
         connection: connection,
-        database: head(databaseList),
+        database: undefined,
       });
     } catch (error) {
       console.error(error);
@@ -201,57 +210,90 @@ const CreateConnectionModal = (props: Props) => {
 
   return (
     <>
-      <Modal title={isEditing ? "Edit Connection" : "Create Connection"} onClose={close}>
+      <Modal title={isEditing ? "修改数据源" : "创建数据源"} onClose={close}>
         <div className="w-full flex flex-col justify-start items-start space-y-3 mt-2">
-          <DataStorageBanner className="rounded-lg bg-white border dark:border-zinc-700 py-2 !justify-start" alwaysShow={true} />
+          <DataStorageBanner
+            className="rounded-lg bg-white border dark:border-zinc-700 py-2 !justify-start"
+            alwaysShow={true}
+          />
           <div className="w-full flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Database Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Database Type
+            </label>
             <Select
               className="w-full"
               value={connection.engineType}
               itemList={[
                 { value: Engine.MySQL, label: "MySQL" },
                 { value: Engine.PostgreSQL, label: "PostgreSQL" },
-                { value: Engine.MSSQL, label: "MSSQL" },
               ]}
-              onValueChange={(value) => setPartialConnection({ engineType: value as Engine })}
+              onValueChange={(value) =>
+                setPartialConnection({ engineType: value as Engine })
+              }
             />
           </div>
           <div className="w-full flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Host</label>
-            <TextField placeholder="Connect host" value={connection.host} onChange={(value) => setPartialConnection({ host: value })} />
-          </div>
-          <div className="w-full flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Port</label>
-            <TextField placeholder="Connect port" value={connection.port} onChange={(value) => setPartialConnection({ port: value })} />
-          </div>
-          {showDatabaseField && (
-            <div className="w-full flex flex-col">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Database Name</label>
-              <TextField
-                placeholder="Connect database"
-                value={connection.database || ""}
-                onChange={(value) => setPartialConnection({ database: value })}
-              />
-            </div>
-          )}
-          <div className="w-full flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              数据源名称
+            </label>
             <TextField
-              placeholder="Connect username"
+              placeholder="可自定义名称，不可重复创建"
+              value={connection.title}
+              onChange={(value) => setPartialConnection({ title: value })}
+            />
+          </div>
+          <div className="w-full flex flex-col">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              主机
+            </label>
+            <TextField
+              placeholder="主机地址, 例如:6.tcp.ngrok.io"
+              value={connection.host}
+              onChange={(value) => setPartialConnection({ host: value })}
+            />
+          </div>
+          <div className="w-full flex flex-col">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              端口
+            </label>
+            <TextField
+              placeholder="端口号, 例如:16305"
+              value={connection.port}
+              onChange={(value) => setPartialConnection({ port: value })}
+            />
+          </div>
+
+          <div className="w-full flex flex-col">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              数据库名称
+            </label>
+            <TextField
+              placeholder="数据库名称"
+              value={connection.database || ""}
+              onChange={(value) => setPartialConnection({ database: value })}
+            />
+          </div>
+          <div className="w-full flex flex-col">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              用户名
+            </label>
+            <TextField
+              placeholder="用户名"
               value={connection.username || ""}
               onChange={(value) => setPartialConnection({ username: value })}
             />
           </div>
           <div className="w-full flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              密码
+            </label>
             <TextField
-              placeholder="Connect password"
+              placeholder="密码"
               value={connection.password || ""}
               onChange={(value) => setPartialConnection({ password: value })}
             />
           </div>
-          <div className="w-full flex flex-col">
+          {/* <div className="w-full flex flex-col">
             <label className="block text-sm font-medium text-gray-700 mb-1">SSL</label>
             <div className="w-full flex flex-row justify-start items-start flex-wrap">
               {SSLTypeOptions.map((option) => (
@@ -337,23 +379,33 @@ const CreateConnectionModal = (props: Props) => {
                 </div>
               </div>
             )}
-          </div>
+          </div> */}
+          <div></div>
         </div>
         <div className="modal-action w-full flex flex-row justify-between items-center space-x-2">
           <div>
             {isEditing && (
-              <button className="btn btn-outline" onClick={() => setShowDeleteConnectionModal(true)}>
-                Delete
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowDeleteConnectionModal(true)}
+              >
+                删除
               </button>
             )}
           </div>
           <div className="space-x-2 flex flex-row justify-center">
             <button className="btn btn-outline" onClick={close}>
-              Close
+              关闭
             </button>
-            <button className="btn" disabled={isRequesting || !allowSave} onClick={handleCreateConnection}>
-              {isRequesting && <Icon.BiLoaderAlt className="w-4 h-auto animate-spin mr-1" />}
-              Save
+            <button
+              className="btn"
+              disabled={isRequesting || !allowSave}
+              onClick={handleCreateConnection}
+            >
+              {isRequesting && (
+                <Icon.BiLoaderAlt className="w-4 h-auto animate-spin mr-1" />
+              )}
+              保存
             </button>
           </div>
         </div>

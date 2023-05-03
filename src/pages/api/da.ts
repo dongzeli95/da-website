@@ -10,14 +10,18 @@ const handler = async (req: NextRequest) => {
   // Get datasource_id and prompt from the request body
   const serviceUrl = process.env.SERVICE_URL;
   const url = serviceUrl + "/v1/analyze"
-  const { datasource_id, dashboard_id, prompt } = await req.json();
+  const { datasource_id, dashboard_id, prompt, org_id } = await req.json();
 
+  console.log("org_id: " + org_id)
   // Set the required JSON body
   const requestBody = {
     datasource_id,
     dashboard_id,
     prompt,
+    org_id
   };
+
+  console.log("requestBody: " + JSON.stringify(requestBody))
 
   // Make a POST request to the external service
   const externalRes = await fetch(url, {

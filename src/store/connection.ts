@@ -2,7 +2,7 @@ import axios from "axios";
 import { uniqBy } from "lodash-es";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Connection, Database, Engine, ResponseObject, Table } from "@/types";
+import { Connection, Database, Engine, ResponseObject, Table, SSLOptions } from "@/types";
 import { generateUUID } from "@/utils";
 
 interface ConnectionContext {
@@ -25,7 +25,8 @@ interface ConnectionState {
   connectionList: Connection[];
   databaseList: Database[];
   currentConnectionCtx?: ConnectionContext;
-  createConnection: (connection: Connection) => Connection;
+  createConnection: (connection: Connection) => Promise<Connection | undefined>;
+  fetchConnections: () => Promise<void>;
   setCurrentConnectionCtx: (connectionCtx: ConnectionContext | undefined) => void;
   getOrFetchDatabaseList: (connection: Connection, skipCache?: boolean) => Promise<Database[]>;
   getOrFetchDatabaseSchema: (database: Database) => Promise<Table[]>;
@@ -34,21 +35,103 @@ interface ConnectionState {
   clearConnection: (filter: (connection: Connection) => boolean) => void;
 }
 
+type DataSource = {
+  uid: string;
+  name: string;
+  type: string;
+  url: string;
+  database: string;
+  access: string;
+  user: string;
+  password: string;
+  jsonData: { [key: string]: string };
+};
+
+// Helper function to convert DataSource objects to Connection objects
+function dataSourceToConnection(dataSource: DataSource) {
+  const [host, port] = dataSource.url.split(':');
+
+  const connection: Connection = {
+    id: dataSource.uid, // Assuming dataSource.name is a unique identifier
+    title: dataSource.name,
+    engineType: dataSource.type == "mysql" ? Engine.MySQL : Engine.PostgreSQL, // You may need to convert this to the appropriate Engine enum value
+    host: host,
+    port: port,
+    username: dataSource.user,
+    password: dataSource.password,
+    database: dataSource.database,
+  };
+  return connection;
+}
+
+// Use this function to convert the received list of DataSource objects to Connection objects
+function convertDataSourcesToConnections(dataSources: DataSource[]) {
+  const connections = dataSources.map(dataSourceToConnection);
+  return connections;
+}
+
 export const useConnectionStore = create<ConnectionState>()(
   persist(
     (set, get) => ({
-      connectionList: [samplePGConnection],
+      connectionList: [],
       databaseList: [],
-      createConnection: (connection: Connection) => {
+      createConnection: async (connection: Connection) => {
+        const response = await fetch("/api/da-be", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ "api_name": "add_datasource", "token": localStorage.getItem('token'), "connection": connection}),
+        });
+
+        if (!response.ok) {
+          return undefined;
+        }
+
+        const data = await response.json();
+        if (data === undefined || data.DataSource === undefined) { return undefined; }
+
         const createdConnection = {
           ...connection,
-          id: generateUUID(),
+          id: data.DataSource.uid,
         };
         set((state) => ({
           ...state,
           connectionList: [...state.connectionList, createdConnection],
         }));
         return createdConnection;
+      },
+      fetchConnections: async () => {
+        const response = await fetch("/api/da-be", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ "api_name": "get_datasources", "token": localStorage.getItem('token')}),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const dataSources = await response.json() as DataSource[];
+        const connections = convertDataSourcesToConnections(dataSources);
+        set((state) => ({
+          ...state,
+          connectionList: [...connections],
+        }))
+
+        // Set the first connection as the currentConnectionCtx
+        if (connections.length > 0) {
+          set((state) => ({
+            ...state,
+            currentConnectionCtx: {
+              connection: connections[0],
+              database: undefined,
+            },
+          }));
+        }
+        return
       },
       setCurrentConnectionCtx: (connectionCtx: ConnectionContext | undefined) =>
         set((state) => ({

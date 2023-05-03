@@ -9,6 +9,7 @@ import {
   useConnectionStore,
   useSettingStore,
   useLayoutStore,
+  useGrafanaStore,
 } from "@/store";
 import { CreatorRole, Message } from "@/types";
 import { countTextTokens, generateUUID } from "@/utils";
@@ -18,8 +19,8 @@ import MessageView from "./MessageView";
 import MessageTextarea from "./MessageTextarea";
 import DataStorageBanner from "../DataStorageBanner";
 import GrafanaGraph from "./GrafanaGraph";
-import { useRouter } from 'next/router';
-
+import { useRouter } from "next/router";
+import { grafanaUrl } from "../constants";
 
 // The maximum number of tokens that can be sent to the OpenAI API.
 // reference: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
@@ -31,19 +32,28 @@ const ConversationView = () => {
   const connectionStore = useConnectionStore();
   const conversationStore = useConversationStore();
   const messageStore = useMessageStore();
+  const grafanaStore = useGrafanaStore();
   const [isStickyAtBottom, setIsStickyAtBottom] = useState<boolean>(true);
   const [showHeaderShadow, setShowHeaderShadow] = useState<boolean>(false);
   const conversationViewRef = useRef<HTMLDivElement>(null);
   const currentConversation = conversationStore.currentConversation;
-  const messageList = messageStore.messageList.filter((message) => message.conversationId === currentConversation?.id);
+  const messageList = messageStore.messageList.filter(
+    (message) => message.conversationId === currentConversation?.id
+  );
   const lastMessage = last(messageList);
+
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setToken(localStorage.getItem("token"));
+  }, []);
 
   const router = useRouter();
 
   const openFullGrafanaDashboard = () => {
     const dashboard_id = currentConversation?.dashboardId;
     const url = `/fullscreen-grafana-view?dashboard_id=${dashboard_id}`;
-    const newTab = window.open(url, '_blank');
+    const newTab = window.open(url, "_blank");
     if (newTab !== null) {
       newTab.focus();
     }
@@ -71,13 +81,21 @@ const ConversationView = () => {
       }
       setShowHeaderShadow((conversationViewRef.current?.scrollTop || 0) > 0);
       setIsStickyAtBottom(
-        conversationViewRef.current.scrollTop + conversationViewRef.current.clientHeight >= conversationViewRef.current.scrollHeight
+        conversationViewRef.current.scrollTop +
+          conversationViewRef.current.clientHeight >=
+          conversationViewRef.current.scrollHeight
       );
     };
-    conversationViewRef.current?.addEventListener("scroll", handleConversationViewScroll);
+    conversationViewRef.current?.addEventListener(
+      "scroll",
+      handleConversationViewScroll
+    );
 
     return () => {
-      conversationViewRef.current?.removeEventListener("scroll", handleConversationViewScroll);
+      conversationViewRef.current?.removeEventListener(
+        "scroll",
+        handleConversationViewScroll
+      );
     };
   }, []);
 
@@ -85,7 +103,8 @@ const ConversationView = () => {
     if (!conversationViewRef.current) {
       return;
     }
-    conversationViewRef.current.scrollTop = conversationViewRef.current.scrollHeight;
+    conversationViewRef.current.scrollTop =
+      conversationViewRef.current.scrollHeight;
   }, [currentConversation, lastMessage?.id]);
 
   useEffect(() => {
@@ -94,14 +113,17 @@ const ConversationView = () => {
     }
 
     if (lastMessage?.status === "LOADING" && isStickyAtBottom) {
-      conversationViewRef.current.scrollTop = conversationViewRef.current.scrollHeight;
+      conversationViewRef.current.scrollTop =
+        conversationViewRef.current.scrollHeight;
     }
   }, [lastMessage?.status, lastMessage?.content, isStickyAtBottom]);
 
   useEffect(() => {
     if (
-      currentConversation?.connectionId === connectionStore.currentConnectionCtx?.connection.id &&
-      currentConversation?.databaseName === connectionStore.currentConnectionCtx?.database?.name
+      currentConversation?.connectionId ===
+        connectionStore.currentConnectionCtx?.connection.id &&
+      currentConversation?.databaseName ===
+        connectionStore.currentConnectionCtx?.database?.name
     ) {
       return;
     }
@@ -109,14 +131,17 @@ const ConversationView = () => {
     // Auto select the first conversation when the current connection changes.
     const conversationList = conversationStore.conversationList.filter(
       (conversation) =>
-        conversation.connectionId === connectionStore.currentConnectionCtx?.connection.id &&
-        conversation.databaseName === connectionStore.currentConnectionCtx?.database?.name
+        conversation.connectionId ===
+          connectionStore.currentConnectionCtx?.connection.id &&
+        conversation.databaseName ===
+          connectionStore.currentConnectionCtx?.database?.name
     );
     conversationStore.setCurrentConversation(head(conversationList));
   }, [currentConversation, connectionStore.currentConnectionCtx]);
 
   const sendMessageToCurrentConversation = async () => {
-    const currentConversation = conversationStore.getState().currentConversation;
+    const currentConversation =
+      conversationStore.getState().currentConversation;
     if (!currentConversation) {
       return;
     }
@@ -124,7 +149,11 @@ const ConversationView = () => {
       return;
     }
 
-    const messageList = messageStore.getState().messageList.filter((message) => message.conversationId === currentConversation.id);
+    const messageList = messageStore
+      .getState()
+      .messageList.filter(
+        (message) => message.conversationId === currentConversation.id
+      );
     let prompt = "";
     let tokens = 0;
 
@@ -142,7 +171,9 @@ const ConversationView = () => {
     if (connectionStore.currentConnectionCtx?.database) {
       let schema = "";
       try {
-        const tables = await connectionStore.getOrFetchDatabaseSchema(connectionStore.currentConnectionCtx?.database);
+        const tables = await connectionStore.getOrFetchDatabaseSchema(
+          connectionStore.currentConnectionCtx?.database
+        );
         for (const table of tables) {
           if (tokens < MAX_TOKENS / 2) {
             tokens += countTextTokens(schema + table.structure);
@@ -152,7 +183,9 @@ const ConversationView = () => {
       } catch (error: any) {
         toast.error(error.message);
       }
-      const promptGenerator = getPromptGeneratorOfAssistant(getAssistantById(currentConversation.assistantId)!);
+      const promptGenerator = getPromptGeneratorOfAssistant(
+        getAssistantById(currentConversation.assistantId)!
+      );
       prompt = promptGenerator(schema);
     }
     let formatedMessageList = [];
@@ -221,23 +254,29 @@ const ConversationView = () => {
     //   status: "DONE",
     // });
 
-const datasource_id = "ztMH-aE4k";
-const dashboard_id = currentConversation?.dashboardId
-const prompt2 = messageList[messageList.length - 1];
+    const datasource_id = currentConversation?.connectionId;
+    const dashboard_id = currentConversation?.dashboardId;
+    const prompt2 = messageList[messageList.length - 1];
 
-const response = await fetch("/api/da", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ datasource_id, dashboard_id, "prompt":prompt2.content }),
-});
+    const response = await fetch("/api/da", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        datasource_id,
+        dashboard_id,
+        prompt: prompt2.content,
+        org_id: grafanaStore.currentOrganization?.orgId.toString(),
+      }),
+    });
 
-const data = await response.json();
-console.log("data: " + data.url);
+    const data = await response.json();
+    const url = grafanaUrl + data.url + "&auth_token=" + token;
+    console.log("data: " + url);
     messageStore.updateMessage(message.id, {
       status: "DONE",
-      content: data.url,
+      content: url,
     });
   };
 
@@ -260,23 +299,28 @@ console.log("data: " + data.url);
       </div>
       <div className="p-2 w-full h-auto grow max-w-4xl py-1 px-4 sm:px-8 mx-auto">
         {messageList.length === 0 ? (
-          <EmptyView className="mt-16" sendMessage={sendMessageToCurrentConversation} />
+          <EmptyView
+            className="mt-16"
+            sendMessage={sendMessageToCurrentConversation}
+          />
         ) : (
-          
-          messageList.map((message) =>
-          message.content != undefined ? ( // Check if message.content exists
-            message.content.startsWith("http") ? ( // Check if the message content starts with "http"
-              <GrafanaGraph key={message.id} url={message.content} />
-            ) : (
-              <MessageView key={message.id} message={message} />
-            )
-          ) : null // Return null if message.content is undefined
-        )
-          
+          messageList.map(
+            (message) =>
+              message.content != undefined ? ( // Check if message.content exists
+                message.content.startsWith("http") ? ( // Check if the message content starts with "http"
+                  <GrafanaGraph key={message.id} url={message.content} />
+                ) : (
+                  <MessageView key={message.id} message={message} />
+                )
+              ) : null // Return null if message.content is undefined
+          )
         )}
       </div>
       <div className="sticky bottom-0 w-full max-w-4xl py-2 px-4 sm:px-8 mx-auto bg-white dark:bg-zinc-800 bg-opacity-80 backdrop-blur">
-        <MessageTextarea disabled={lastMessage?.status === "LOADING"} sendMessage={sendMessageToCurrentConversation} />
+        <MessageTextarea
+          disabled={lastMessage?.status === "LOADING"}
+          sendMessage={sendMessageToCurrentConversation}
+        />
       </div>
     </div>
   );
