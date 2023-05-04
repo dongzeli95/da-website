@@ -6,6 +6,20 @@ export enum Engine {
   MSSQL = "MSSQL",
 }
 
+export const engineToGrafanaType = {
+  [Engine.MySQL]: "mysql",
+  [Engine.PostgreSQL]: "postgres",
+  [Engine.MSSQL]: "mssql",
+};
+
+export function toGrafanaType(engine: Engine): string {
+  const grafanaType = engineToGrafanaType[engine];
+  if (!grafanaType) {
+    throw new Error(`Unsupported engine: ${engine}`);
+  }
+  return grafanaType;
+}
+
 export interface SSLOptions {
   ca?: string;
   cert?: string;

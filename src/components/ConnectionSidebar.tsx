@@ -1,8 +1,13 @@
 import { Drawer } from "@mui/material";
 import { head } from "lodash-es";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useConversationStore, useConnectionStore, useLayoutStore, ResponsiveWidth } from "@/store";
+import {
+  useConversationStore,
+  useConnectionStore,
+  useLayoutStore,
+  ResponsiveWidth,
+} from "@/store";
 import { Conversation, Connection } from "@/types";
 import Select from "./kit/Select";
 import Tooltip from "./kit/Tooltip";
@@ -23,7 +28,9 @@ interface State {
   showEditConversationTitleModal: boolean;
 }
 
-const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({
+  onLogout,
+}) => {
   const { t } = useTranslation();
   const layoutStore = useLayoutStore();
   const connectionStore = useConnectionStore();
@@ -33,12 +40,19 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
     showSettingModal: false,
     showEditConversationTitleModal: false,
   });
-  const [editConnectionModalContext, setEditConnectionModalContext] = useState<Connection>();
-  const [editConversationTitleModalContext, setEditConversationTitleModalContext] = useState<Conversation>();
-  const [isRequestingDatabase, setIsRequestingDatabase] = useState<boolean>(false);
+  const [editConnectionModalContext, setEditConnectionModalContext] =
+    useState<Connection>();
+  const [
+    editConversationTitleModalContext,
+    setEditConversationTitleModalContext,
+  ] = useState<Conversation>();
+  const [isRequestingDatabase, setIsRequestingDatabase] =
+    useState<boolean>(false);
   const connectionList = connectionStore.connectionList;
   const currentConnectionCtx = connectionStore.currentConnectionCtx;
-  const databaseList = connectionStore.databaseList.filter((database) => database.connectionId === currentConnectionCtx?.connection.id);
+  const databaseList = connectionStore.databaseList.filter(
+    (database) => database.connectionId === currentConnectionCtx?.connection.id
+  );
   const conversationList = conversationStore.conversationList.filter(
     (conversation) =>
       conversation.connectionId === currentConnectionCtx?.connection.id &&
@@ -64,16 +78,18 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
     };
   }, []);
 
+  // Create a new conversation if there is no conversation in the list.
   useEffect(() => {
-    if (currentConnectionCtx?.connection) {
-      setIsRequestingDatabase(true);
-      connectionStore.getOrFetchDatabaseList(currentConnectionCtx.connection).finally(() => {
-        setIsRequestingDatabase(false);
-      });
-    } else {
-      setIsRequestingDatabase(false);
+    if (conversationList.length === 0) {
+      handleCreateConversation().finally(() => {});
     }
-  }, [currentConnectionCtx?.connection]);
+  }, []);
+
+  useEffect(() => {
+    if (connectionStore.connectionList.length === 0) {
+      toggleCreateConnectionModal(true);
+    }
+  });
 
   const toggleCreateConnectionModal = (show = true) => {
     setState({
@@ -98,7 +114,7 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
   };
 
   const handleConnectionSelect = async (connection: Connection) => {
-    const databaseList = await connectionStore.getOrFetchDatabaseList(connection);
+    // const databaseList = await connectionStore.getOrFetchDatabaseList(connection);
     connectionStore.setCurrentConnectionCtx({
       connection,
       database: head(databaseList),
@@ -118,8 +134,12 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
       return;
     }
 
-    const databaseList = await connectionStore.getOrFetchDatabaseList(currentConnectionCtx.connection);
-    const database = databaseList.find((database) => database.name === databaseName);
+    const databaseList = await connectionStore.getOrFetchDatabaseList(
+      currentConnectionCtx.connection
+    );
+    const database = databaseList.find(
+      (database) => database.name === databaseName
+    );
     connectionStore.setCurrentConnectionCtx({
       connection: currentConnectionCtx.connection,
       database: database,
@@ -127,12 +147,15 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
   };
 
   const handleCreateConversation = async () => {
-    const response = await fetch("/api/grafana", {
+    const response = await fetch("/api/da-be", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ "api_name": "create_dashboard", "dashboard_name": generateUUID()}),
+      body: JSON.stringify({
+        api_name: "create_dashboard",
+        token: localStorage.getItem("token"),
+      }),
     });
 
     const data = await response.json();
@@ -141,7 +164,11 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
     if (!currentConnectionCtx) {
       conversationStore.createConversation(data.uid);
     } else {
-      conversationStore.createConversation(data.uid, currentConnectionCtx.connection.id, currentConnectionCtx.database?.name);
+      conversationStore.createConversation(
+        data.uid,
+        currentConnectionCtx.connection.id,
+        currentConnectionCtx.database?.name
+      );
     }
   };
 
@@ -181,17 +208,21 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
             <div className="w-full flex flex-col justify-start items-start">
               <button
                 className={`w-full h-14 rounded-l-lg p-2 mt-1 group ${
-                  currentConnectionCtx === undefined && "bg-gray-100 dark:bg-zinc-700 shadow"
+                  currentConnectionCtx === undefined &&
+                  "bg-gray-100 dark:bg-zinc-700 shadow"
                 }`}
-                onClick={() => connectionStore.setCurrentConnectionCtx(undefined)}
+                onClick={() =>
+                  connectionStore.setCurrentConnectionCtx(undefined)
+                }
               >
                 {/* <img src="/chat-logo-bot.webp" className="w-7 h-auto mx-auto" alt="" /> */}
               </button>
-              {/* {connectionList.map((connection) => (
+              {connectionList.map((connection) => (
                 <button
                   key={connection.id}
-                  className={`relative w-full h-14 rounded-l-lg p-2 mt-2 group ${
-                    currentConnectionCtx?.connection.id === connection.id && "bg-gray-100 dark:bg-zinc-700 shadow"
+                  className={`relative w-full min-h-14 rounded-l-lg p-2 mt-2 group flex items-center justify-center text-center ${
+                    currentConnectionCtx?.connection.id === connection.id &&
+                    "bg-gray-100 dark:bg-zinc-700 shadow"
                   }`}
                   onClick={() => handleConnectionSelect(connection)}
                 >
@@ -204,7 +235,15 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
                   >
                     <Icon.FiEdit3 className="w-3.5 h-auto dark:text-gray-300" />
                   </span>
-                  <EngineIcon engine={connection.engineType} className="w-auto h-full mx-auto dark:text-gray-300" />
+                  <div className="flex flex-col items-center">
+                    <EngineIcon
+                      engine={connection.engineType}
+                      className="w-auto h-14 mx-auto dark:text-gray-300 text-center"
+                    />
+                    <span className="text-center mt-1 dark:text-gray-300 w-12 break-words">
+                      {connection.title}
+                    </span>
+                  </div>
                 </button>
               ))}
               <Tooltip title={t("connection.new")} side="right">
@@ -214,12 +253,12 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
                 >
                   <Icon.AiOutlinePlus className="w-auto h-full mx-auto" />
                 </button>
-              </Tooltip> */}
+              </Tooltip>
             </div>
             <div className="w-full flex flex-col justify-end items-center">
               <DarkModeSwitch />
               <LocaleSwitch />
-              <Logout onLogout={onLogout}/>
+              <Logout onLogout={onLogout} />
               {/* <Tooltip title={t("common.setting")} side="right">
                 <button
                   className=" w-10 h-10 p-1 rounded-full flex flex-row justify-center items-center hover:bg-gray-100 dark:hover:bg-zinc-700"
@@ -236,10 +275,11 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
             <div className="w-full grow">
               {isRequestingDatabase && (
                 <div className="w-full h-12 flex flex-row justify-start items-center px-4 sticky top-0 border z-1 mb-4 mt-2 rounded-lg text-sm text-gray-600 dark:text-gray-400">
-                  <Icon.BiLoaderAlt className="w-4 h-auto animate-spin mr-1" /> {t("common.loading")}
+                  <Icon.BiLoaderAlt className="w-4 h-auto animate-spin mr-1" />{" "}
+                  {t("common.loading")}
                 </div>
               )}
-              {databaseList.length > 0 && (
+              {/* {databaseList.length > 0 && (
                 <div className="w-full sticky top-0 z-1 my-4">
                   <Select
                     className="w-full px-4 py-3 !text-base"
@@ -254,21 +294,26 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
                     placeholder={t("connection.select-database") || ""}
                   />
                 </div>
-              )}
+              )} */}
               {conversationList.map((conversation) => (
                 <div
                   key={conversation.id}
                   className={`w-full mt-2 first:mt-4 py-3 pl-4 pr-2 rounded-lg flex flex-row justify-start items-center cursor-pointer dark:text-gray-300 border border-transparent group hover:bg-white dark:hover:bg-zinc-800 ${
-                    conversation.id === conversationStore.currentConversation?.id && "bg-white dark:bg-zinc-800 border-gray-200 font-medium"
+                    conversation.id ===
+                      conversationStore.currentConversation?.id &&
+                    "bg-white dark:bg-zinc-800 border-gray-200 font-medium"
                   }`}
                   onClick={() => handleConversationSelect(conversation)}
                 >
-                  {conversation.id === conversationStore.currentConversation?.id ? (
+                  {conversation.id ===
+                  conversationStore.currentConversation?.id ? (
                     <Icon.IoChatbubble className="w-5 h-auto mr-1.5 shrink-0" />
                   ) : (
                     <Icon.IoChatbubbleOutline className="w-5 h-auto mr-1.5 opacity-80 shrink-0" />
                   )}
-                  <span className="truncate grow">{conversation.title || "SQL Chat"}</span>
+                  <span className="truncate grow">
+                    {conversation.title || "SQL Chat"}
+                  </span>
                   <Dropdown
                     tigger={
                       <button className="w-4 h-4 shrink-0 group-hover:visible invisible flex justify-center items-center text-gray-400 hover:text-gray-500">
@@ -279,7 +324,9 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
                     <div className="p-1 flex flex-col justify-start items-start bg-white dark:bg-zinc-900 shadow-lg rounded-lg">
                       <DropdownItem
                         className="w-full p-1 px-2 flex flex-row justify-start items-center rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-800"
-                        onClick={() => handleEditConversationTitle(conversation)}
+                        onClick={() =>
+                          handleEditConversationTitle(conversation)
+                        }
                       >
                         <Icon.FiEdit3 className="w-4 h-auto mr-1 opacity-70" />
                         {t("common.edit")}
@@ -318,17 +365,23 @@ const ConnectionSidebar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => 
       </Drawer>
 
       {state.showCreateConnectionModal && (
-        <CreateConnectionModal connection={editConnectionModalContext} close={() => toggleCreateConnectionModal(false)} />
-      )}
-
-      {state.showSettingModal && <SettingModal close={() => toggleSettingModal(false)} />}
-
-      {editConversationTitleModalContext && state.showEditConversationTitleModal && (
-        <EditConversationTitleModal
-          close={() => toggleEditConversationTitleModal(false)}
-          conversation={editConversationTitleModalContext}
+        <CreateConnectionModal
+          connection={editConnectionModalContext}
+          close={() => toggleCreateConnectionModal(false)}
         />
       )}
+
+      {state.showSettingModal && (
+        <SettingModal close={() => toggleSettingModal(false)} />
+      )}
+
+      {editConversationTitleModalContext &&
+        state.showEditConversationTitleModal && (
+          <EditConversationTitleModal
+            close={() => toggleEditConversationTitleModal(false)}
+            conversation={editConversationTitleModalContext}
+          />
+        )}
     </>
   );
 };
