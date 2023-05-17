@@ -21,6 +21,7 @@ import DataStorageBanner from "../DataStorageBanner";
 import GrafanaGraph from "./GrafanaGraph";
 import { useRouter } from "next/router";
 import { grafanaUrl } from "../constants";
+import DeliveryCostModal from "../DeliveryCostModal";
 
 // The maximum number of tokens that can be sent to the OpenAI API.
 // reference: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
@@ -35,6 +36,7 @@ const ConversationView = () => {
   const grafanaStore = useGrafanaStore();
   const [isStickyAtBottom, setIsStickyAtBottom] = useState<boolean>(true);
   const [showHeaderShadow, setShowHeaderShadow] = useState<boolean>(false);
+  const [showCostEstimator, toggleDeliveryCostModal] = useState<boolean>(false);
   const conversationViewRef = useRef<HTMLDivElement>(null);
   const currentConversation = conversationStore.currentConversation;
   const messageList = messageStore.messageList.filter(
@@ -264,6 +266,7 @@ const ConversationView = () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        api_name: "analyze",
         datasource_id,
         dashboard_id,
         prompt: prompt2.content,
@@ -320,8 +323,15 @@ const ConversationView = () => {
         <MessageTextarea
           disabled={lastMessage?.status === "LOADING"}
           sendMessage={sendMessageToCurrentConversation}
+          openCostEstimator={() => toggleDeliveryCostModal(true)}
         />
       </div>
+
+      {showCostEstimator && (
+        <DeliveryCostModal
+          close={() => toggleDeliveryCostModal(false)}
+        />
+      )}
     </div>
   );
 };

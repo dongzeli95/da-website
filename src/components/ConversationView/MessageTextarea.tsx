@@ -10,10 +10,11 @@ import Icon from "../Icon";
 interface Props {
   disabled?: boolean;
   sendMessage: () => Promise<void>;
+  openCostEstimator: () => void;
 }
 
 const MessageTextarea = (props: Props) => {
-  const { disabled, sendMessage } = props;
+  const { disabled, sendMessage, openCostEstimator } = props;
   const { t } = useTranslation();
   const connectionStore = useConnectionStore();
   const userStore = useUserStore();
@@ -102,6 +103,14 @@ const MessageTextarea = (props: Props) => {
         onClick={handleSend}
       >
         <Icon.IoMdSend className="w-full h-auto text-indigo-600" />
+      </button>
+
+      <button
+        className="w-8 p-1 -translate-y-1 cursor-pointer rounded-md hover:shadow hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={disabled}
+        onClick={openCostEstimator}
+      >
+        <Icon.BiCalculator className="w-full h-auto text-indigo-600" />
       </button>
     </div>
   );
