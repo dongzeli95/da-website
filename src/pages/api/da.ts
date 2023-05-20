@@ -65,18 +65,17 @@ async function costEstimate(channel_id: string, area: string, address: string, z
     notes
   };
 
-  console.log("about to send cost estimation request")
 
   // Make a POST request to the external service
-  const externalRes = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  // Check if the request was successful
+  try{
+    const externalRes = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+      // Check if the request was successful
   if (!externalRes.ok) {
     return new Response(externalRes.body, {
       status: externalRes.status,
@@ -87,6 +86,9 @@ async function costEstimate(channel_id: string, area: string, address: string, z
   // Return the response from the external service
   const data = await externalRes.json();
   return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+  } catch(error) {
+    console.error("Error in fetch call:", error);
+  }
 }
 
 export default handler;

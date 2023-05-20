@@ -47,19 +47,10 @@ const defaultDeliveryCost = {
   notes: "",
 };
 
-// const baseURL = "http://localhost:5000/v1/stream_gpt";
-const baseURL =
-  "https://da-service-dev-6039-4-1313827042.sh.run.tcloudbase.com/v1/stream_gpt";
-
-const gptStream = (conversationId: string) => {
-return new EventSource(`${baseURL}/${conversationId}`);
-};
-
 const DeliveryCostModal = (props: Props) => {
   const { close } = props;
   const [deliveryCost, setDeliveryCost] = useState(defaultDeliveryCost);
   const [isRequesting, setIsRequesting] = useState(false);
-  const [messageId, setMessageId] = useState("");
   const messageStore = useMessageStore();
   const conversationStore = useConversationStore();
   const userStore = useUserStore();
@@ -74,18 +65,49 @@ const DeliveryCostModal = (props: Props) => {
     if (!conversation) {
         return;
     }
-    const sse = gptStream(conversation.id);
-    console.log("subscribed here")
-    sse.addEventListener("gpt_stream", (event) => {
-        const message = JSON.parse(event.data);
-        console.log(message.token);
-        const lastMessageIndex = messageStore.getState().messageList.length - 1;
-        messageStore.updateMessage(messageId, {
-            status: "DONE",
-            content: messageStore.getState().messageList[lastMessageIndex].content + message.token,
+
+    console.log("trigger sse again")
+    const conversationId = conversation.id;
+    const newSSE = !conversationStore.eventSourceExists(conversationId);
+    const sse = conversationStore.getEventSource(conversation.id);
+    console.log("sse: ", sse);
+    if (newSSE) {
+        sse.addEventListener("message", (event) => {
+            const message = JSON.parse(event.data);
+            console.log("message: ", message);
+            // console.log(message.token);
+            const messageList = messageStore.getState().messageList.filter(
+                (message) => message.conversationId === conversationId
+            );
+            const lastMessage = last(messageList);
+            console.log("last message: ", lastMessage);
+                if (!lastMessage) {
+                    return;
+                }
+            if (message.type != undefined && message.type === "end_stream") {
+                console.log("end stream");
+                var content = message.output
+                console.log("message content: ", content)
+                // Fallback to last message content if no output is returned
+                if (content == undefined || content === "") {
+                    content = lastMessage.content
+                }
+                console.log("falback content: ", content);
+                messageStore.updateMessage(lastMessage.id, {
+                    status: "DONE",
+                    content: content,
+                });
+                return;
+            }
+
+            const newMessage = lastMessage.content + message.token;
+            messageStore.updateMessage(lastMessage.id, {
+                status: "LOADING",
+                content: newMessage
+            });
         });
-    });
-  }, [])
+    }
+  }, [conversationStore.eventSourceMap])
 
   const generateMessage = () => {
     const { area, address, zipcode, residential, weight, notes } = deliveryCost;
@@ -162,12 +184,7 @@ const DeliveryCostModal = (props: Props) => {
             }),
           });
 
-            setMessageId(systemMessageId);
-
-            // messageStore.updateMessage(systemMessageId, {
-            //   status: "DONE",
-            //   content: data.result,
-            // });
+          console.log("system message id: ", systemMessageId);
 
       toast.success("发送估算请求成功");
     } catch (error) {
@@ -209,11 +226,19 @@ const DeliveryCostModal = (props: Props) => {
           <label className="block text-sm font-medium">重量(公斤)</label>
           <TextField
             value={deliveryCost.weight.toString()}
-            onChange={(value) =>
+            onChange={(value) => {
+                if (isNaN(parseFloat(value))) {
+                    setDeliveryCost({
+                    ...deliveryCost,
+                    weight: 0,
+                    });
+                    return;
+                }
               setDeliveryCost({
                 ...deliveryCost,
                 weight: parseFloat(value),
               })
+            }
             }
           />
         </div>

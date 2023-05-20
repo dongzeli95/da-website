@@ -37,6 +37,7 @@ const ConversationView = () => {
   const [isStickyAtBottom, setIsStickyAtBottom] = useState<boolean>(true);
   const [showHeaderShadow, setShowHeaderShadow] = useState<boolean>(false);
   const [showCostEstimator, toggleDeliveryCostModal] = useState<boolean>(false);
+  const [costEstimationEnabled, setCostEstimationEnabled] = useState<boolean>(false);
   const conversationViewRef = useRef<HTMLDivElement>(null);
   const currentConversation = conversationStore.currentConversation;
   const messageList = messageStore.messageList.filter(
@@ -48,7 +49,80 @@ const ConversationView = () => {
 
   useEffect(() => {
     setToken(localStorage.getItem("token"));
+    const getCostEstimationEnabled = async () => {
+      const response = await fetch("/api/da-be", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_name: "cost_estimation_enabled",
+          token: localStorage.getItem("token"),
+        }),
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+      console.log("cost estimation enabled: ", data)
+      setCostEstimationEnabled(data);
+    }
+
+    getCostEstimationEnabled();
   }, []);
+
+    useEffect(() => {
+      let conversation = conversationStore.currentConversation;
+      if (!conversation || !costEstimationEnabled) {
+        return;
+      }
+
+      console.log("trigger sse again");
+      const conversationId = conversation.id;
+      const newSSE = !conversationStore.eventSourceExists(conversationId);
+      const sse = conversationStore.getEventSource(conversation.id);
+      console.log("sse: ", sse);
+      if (newSSE) {
+        sse.addEventListener("message", (event) => {
+          const message = JSON.parse(event.data);
+          console.log("message: ", message);
+          // console.log(message.token);
+          const messageList = messageStore
+            .getState()
+            .messageList.filter(
+              (message) => message.conversationId === conversationId
+            );
+          const lastMessage = last(messageList);
+          console.log("last message: ", lastMessage);
+          if (!lastMessage) {
+            return;
+          }
+          if (message.type != undefined && message.type === "end_stream") {
+            console.log("end stream");
+            var content = message.output;
+            console.log("message content: ", content);
+            // Fallback to last message content if no output is returned
+            if (content == undefined || content === "") {
+              content = lastMessage.content;
+            }
+            console.log("falback content: ", content);
+            messageStore.updateMessage(lastMessage.id, {
+              status: "DONE",
+              content: content,
+            });
+            return;
+          }
+
+          const newMessage = lastMessage.content + message.token;
+          messageStore.updateMessage(lastMessage.id, {
+            status: "LOADING",
+            content: newMessage,
+          });
+        });
+      }
+    }, [conversationStore.eventSourceMap, costEstimationEnabled]);
 
   const router = useRouter();
 
