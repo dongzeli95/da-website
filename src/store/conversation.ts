@@ -17,7 +17,10 @@ const getDefaultConversation = (): Conversation => {
 interface ConversationState {
   getState: () => ConversationState;
   conversationList: Conversation[];
+  eventSourceMap: { [conversationId: string]: EventSource };
   currentConversation?: Conversation;
+  getEventSource: (conversationId: Id) => EventSource;
+  eventSourceExists: (conversationId: Id) => boolean; 
   createConversation: (dashboardId:string, connectionId?: Id, databaseName?: string) => Conversation;
   setCurrentConversation: (Conversation: Conversation | undefined) => void;
   getConversationById: (conversationId: Id) => Conversation | undefined;
@@ -25,11 +28,69 @@ interface ConversationState {
   clearConversation: (filter: (conversation: Conversation) => boolean) => void;
 }
 
+// const baseURL = "http://127.0.0.1:5000/v1/stream_gpt"
+const baseURL =
+  "https://da-service-6039-4-1313827042.sh.run.tcloudbase.com/v1/stream_gpt";
+
+const isEmpty = (obj: Object) => {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
+type StoreSet = (partial: Partial<ConversationState> | ((state: ConversationState) => Partial<ConversationState>), replace?: boolean) => void;
+
+function createEventSource(conversationId: Id, storeSet: StoreSet) {
+  let es = new EventSource(`${baseURL}/${conversationId}`);
+
+  // Listen for error event
+  es.onerror = (err) => {
+    // Close the current connection
+    es.close();
+
+    // Set a timeout to reconnect after the delay
+    setTimeout(() => {
+      // Replace the EventSource in the eventSourceMap
+      storeSet((state) => {
+          const {[conversationId]: removed, ...rest} = state.eventSourceMap;
+
+          // Create a new object
+          const newEventSourceMap = { ...rest };
+
+          return {
+              ...state,
+              eventSourceMap: newEventSourceMap,
+          };
+      });
+    });
+  };
+
+  return es;
+}
+
 export const useConversationStore = create<ConversationState>()(
   persist(
     (set, get) => ({
       getState: () => get(),
       conversationList: [],
+      eventSourceMap: {},
+      getEventSource: (conversationId: Id) => {
+        if (!get().eventSourceMap[conversationId] || isEmpty(get().eventSourceMap[conversationId])) {
+          const es = createEventSource(conversationId, set);
+          set((state) => ({
+              ...state,
+              eventSourceMap: {
+                ...state.eventSourceMap,
+                [conversationId]: es,
+              },
+          }));
+          return es;
+        }
+
+        const res = get().eventSourceMap[conversationId]
+        return res
+      },
+      eventSourceExists: (conversationId: Id) => {
+        return get().eventSourceMap[conversationId] !== undefined && !isEmpty(get().eventSourceMap[conversationId])
+      },
       createConversation: ( dashboardId: string, connectionId?: Id, databaseName?: string) => {
         const conversation: Conversation = {
           ...getDefaultConversation(),

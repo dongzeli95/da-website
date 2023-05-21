@@ -21,6 +21,7 @@ import DataStorageBanner from "../DataStorageBanner";
 import GrafanaGraph from "./GrafanaGraph";
 import { useRouter } from "next/router";
 import { grafanaUrl } from "../constants";
+import DeliveryCostModal from "../DeliveryCostModal";
 
 // The maximum number of tokens that can be sent to the OpenAI API.
 // reference: https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
@@ -35,6 +36,8 @@ const ConversationView = () => {
   const grafanaStore = useGrafanaStore();
   const [isStickyAtBottom, setIsStickyAtBottom] = useState<boolean>(true);
   const [showHeaderShadow, setShowHeaderShadow] = useState<boolean>(false);
+  const [showCostEstimator, toggleDeliveryCostModal] = useState<boolean>(false);
+  const [costEstimationEnabled, setCostEstimationEnabled] = useState<boolean>(false);
   const conversationViewRef = useRef<HTMLDivElement>(null);
   const currentConversation = conversationStore.currentConversation;
   const messageList = messageStore.messageList.filter(
@@ -46,7 +49,71 @@ const ConversationView = () => {
 
   useEffect(() => {
     setToken(localStorage.getItem("token"));
+    const getCostEstimationEnabled = async () => {
+      const response = await fetch("/api/da-be", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_name: "cost_estimation_enabled",
+          token: localStorage.getItem("token"),
+        }),
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+      setCostEstimationEnabled(data);
+    }
+
+    getCostEstimationEnabled();
   }, []);
+
+    useEffect(() => {
+      let conversation = conversationStore.currentConversation;
+      if (!conversation || !costEstimationEnabled) {
+        return;
+      }
+
+      const conversationId = conversation.id;
+      const newSSE = !conversationStore.eventSourceExists(conversationId);
+      const sse = conversationStore.getEventSource(conversation.id);
+      if (newSSE) {
+        sse.addEventListener("message", (event) => {
+          const message = JSON.parse(event.data);
+          const messageList = messageStore
+            .getState()
+            .messageList.filter(
+              (message) => message.conversationId === conversationId
+            );
+          const lastMessage = last(messageList);
+          if (!lastMessage) {
+            return;
+          }
+          if (message.type != undefined && message.type === "end_stream") {
+            var content = message.output;
+            // Fallback to last message content if no output is returned
+            if (content == undefined || content === "") {
+              content = lastMessage.content;
+            }
+            messageStore.updateMessage(lastMessage.id, {
+              status: "DONE",
+              content: content,
+            });
+            return;
+          }
+
+          const newMessage = lastMessage.content + message.token;
+          messageStore.updateMessage(lastMessage.id, {
+            status: "LOADING",
+            content: newMessage,
+          });
+        });
+      }
+    }, [conversationStore.eventSourceMap, costEstimationEnabled]);
 
   const router = useRouter();
 
@@ -264,6 +331,7 @@ const ConversationView = () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        api_name: "analyze",
         datasource_id,
         dashboard_id,
         prompt: prompt2.content,
@@ -320,8 +388,15 @@ const ConversationView = () => {
         <MessageTextarea
           disabled={lastMessage?.status === "LOADING"}
           sendMessage={sendMessageToCurrentConversation}
+          openCostEstimator={() => toggleDeliveryCostModal(true)}
         />
       </div>
+
+      {showCostEstimator && (
+        <DeliveryCostModal
+          close={() => toggleDeliveryCostModal(false)}
+        />
+      )}
     </div>
   );
 };
