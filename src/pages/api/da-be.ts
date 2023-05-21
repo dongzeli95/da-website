@@ -10,7 +10,6 @@ const baseUrl = process.env.DA_BE_URL;
 const handler = async (req: NextRequest) => {
     // Rest of your code
     const { api_name, email, password, token, connection } = await req.json();
-    console.log("called handler: ", api_name)
 
     if (api_name === "login") {
       return login(email, password)
@@ -41,6 +40,8 @@ const handler = async (req: NextRequest) => {
       return createGrafanaDashboard(token)
     } else if (api_name === "get_user_organizations") {
       return getUserOrganizations(token)
+    } else if (api_name === "cost_estimation_enabled") {
+      return costEstimationEnabled(token)
     }
   };
 
@@ -153,6 +154,18 @@ async function createGrafanaDashboard(token: string) {
 
 async function getUserOrganizations(token: string) {
   const response = await fetch(`${baseUrl}/v1/grafana/user/organizations`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token,
+    },
+  });
+
+  return response
+}
+
+async function costEstimationEnabled(token: string) {
+  const response = await fetch(`${baseUrl}/v1/cost_estimation_enabled`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',

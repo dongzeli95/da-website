@@ -10,10 +10,11 @@ import Icon from "../Icon";
 interface Props {
   disabled?: boolean;
   sendMessage: () => Promise<void>;
+  openCostEstimator: () => void;
 }
 
 const MessageTextarea = (props: Props) => {
-  const { disabled, sendMessage } = props;
+  const { disabled, sendMessage, openCostEstimator } = props;
   const { t } = useTranslation();
   const connectionStore = useConnectionStore();
   const userStore = useUserStore();
@@ -21,12 +22,38 @@ const MessageTextarea = (props: Props) => {
   const messageStore = useMessageStore();
   const [value, setValue] = useState<string>("");
   const [isInIME, setIsInIME] = useState(false);
+  const [costEstimationEnabled, setCostEstimationEnabled] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const getCostEstimationEnabled = async () => {
+      const response = await fetch("/api/da-be", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_name: "cost_estimation_enabled",
+          token: token,
+        }),
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+      setCostEstimationEnabled(data);
+    };
+
+    getCostEstimationEnabled();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -103,6 +130,16 @@ const MessageTextarea = (props: Props) => {
       >
         <Icon.IoMdSend className="w-full h-auto text-indigo-600" />
       </button>
+      {costEstimationEnabled
+        && 
+        <button
+          className="w-8 p-1 -translate-y-1 cursor-pointer rounded-md hover:shadow hover:bg-gray-100 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={disabled}
+          onClick={openCostEstimator}
+        >
+          <Icon.BiCalculator className="w-full h-auto text-indigo-600" />
+        </button>
+      }
     </div>
   );
 };
